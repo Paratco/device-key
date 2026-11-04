@@ -60,7 +60,7 @@ jobs:
             mkdir -p "prebuilds/$target"
             mv "$dir/device_key.node" "prebuilds/$target/device_key.node"
           done
-          test "$(ls prebuilds | wc -l)" -eq 5
+          test "$(ls prebuilds | wc -l)" -eq 6
 
       - if: steps.version.outputs.next
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

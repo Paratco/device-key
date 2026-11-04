@@ -44,8 +44,10 @@ if (WIN32)
         COMMAND_ERROR_IS_FATAL ANY
     )
     set(NAPI_LIB "${CMAKE_BINARY_DIR}/napi.lib")
+
+    # The target machine (x64 or ARM64) given explicitly: lib.exe assumes x64 without it.
     execute_process(
-        COMMAND ${CMAKE_AR} /def:${NAPI_DEF} /out:${NAPI_LIB} ${CMAKE_STATIC_LINKER_FLAGS}
+        COMMAND ${CMAKE_AR} /def:${NAPI_DEF} /out:${NAPI_LIB} /machine:${CMAKE_CXX_COMPILER_ARCHITECTURE_ID} ${CMAKE_STATIC_LINKER_FLAGS}
         RESULT_VARIABLE _rc
     )
     if (NOT _rc EQUAL 0)
