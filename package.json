@@ -1,0 +1,42 @@
+{
+  "name": "@paratco/device-key",
+  "version": "0.1.0",
+  "description": "Hardware-held device keys for Node and Electron: TPM 2.0 on Windows and Linux, Secure Enclave on macOS. P-256 ECDSA, non-exportable.",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "prebuilds"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Paratco/device-key.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "configure": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release",
+    "build": "bun run configure && cmake --build build --config Release",
+    "test": "bun test",
+    "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "@types/node": "26.6.5",
+    "node-addon-api": "8.9.2",
+    "node-api-headers": "1.9.0",
+    "typescript": "6.0.3"
+  }
+}

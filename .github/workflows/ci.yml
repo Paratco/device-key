@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+# Actions are pinned by commit: this package signs logins, so a moved tag must not change what builds it.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, target: win32-x64, binary: build/Release/device_key.node }
+          - { os: macos-latest, target: darwin-arm64, binary: build/device_key.node }
+          # Cross-built on the arm64 runner; it cannot load an x64 binary, so it is not tested there.
+          - { os: macos-latest, target: darwin-x64, binary: build/device_key.node, cmake: -DCMAKE_OSX_ARCHITECTURES=x86_64, cross: true }
+          - { os: ubuntu-24.04, target: linux-x64, binary: build/device_key.node }
+          - { os: ubuntu-24.04-arm, target: linux-arm64, binary: build/device_key.node }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+
+      - run: bun install --frozen-lockfile
+
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake }}
+
+      - run: cmake --build build --config Release
+
+      - if: ${{ !matrix.cross }}
+        run: bun test
+
+      - if: ${{ !matrix.cross }}
+        run: bunx tsc
+
+      - name: Stage the binary
+        shell: bash
+        run: mkdir -p "prebuilds/${{ matrix.target }}" && cp "${{ matrix.binary }}" "prebuilds/${{ matrix.target }}/device_key.node"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: prebuild-${{ matrix.target }}
+          path: prebuilds/${{ matrix.target }}/device_key.node
+          if-no-files-found: error
