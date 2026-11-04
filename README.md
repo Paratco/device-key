@@ -9,8 +9,8 @@ its key, and the user's PIN is checked only after the signature (see Paratco/frs
 
 > **License:** MIT.
 >
-> **Status:** the Windows backend is built (TPM 2.0 through CNG). The Linux and macOS backends are not built yet and
-> report the key store as unavailable.
+> **Status:** the Windows (TPM 2.0 through CNG) and Linux (TPM 2.0 through tpm2-tss) backends are built. The macOS
+> backend is not built yet and reports the key store as unavailable.
 
 ## API
 
@@ -35,7 +35,7 @@ Signatures are DER on every platform, so a server verifies them with any standar
 | OS | Hardware | Backend | Requirements |
 |---|---|---|---|
 | Windows 11 | TPM 2.0 | CNG `NCrypt`, *Microsoft Platform Crypto Provider* | Windows 11 requires TPM 2.0; VMs need a virtual TPM. Keys belong to the Windows account that creates them, no admin rights needed |
-| Linux | TPM 2.0 | `tpm2-tss` ESAPI, key blob wrapped by the TPM | `libtss2-esys`; the process user in the `tss` group |
+| Linux | TPM 2.0 | `tpm2-tss` ESAPI through `/dev/tpmrm0`, key blob wrapped by the TPM | `libtss2-esys`, `libtss2-mu`, `libtss2-tctildr` (installed with `tpm2-tools`); the process user in the `tss` group. The wrapped blob is kept in `~/.local/share/paratco-device-key/` (or `$XDG_DATA_HOME`'s), so keys belong to the Linux account that creates them; deleting the file deletes the key |
 | macOS | Secure Enclave | Security.framework | Apple silicon or a T2 chip; the host app must be code-signed with a keychain access group, so it works inside a signed app, not from a bare `node` |
 
 Prebuilt binaries for `win32-x64`, `win32-arm64`, `darwin-arm64`, `darwin-x64`, `linux-x64` (glibc) and `linux-arm64` (glibc), each

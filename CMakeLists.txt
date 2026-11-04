@@ -59,6 +59,9 @@ elseif (APPLE)
     list(APPEND PLATFORM_LIBS "-framework Security" "-framework CoreFoundation")
 elseif (UNIX)
     list(APPEND SOURCES src/backend_linux.cpp)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(TSS2 REQUIRED IMPORTED_TARGET tss2-esys tss2-mu tss2-tctildr)
+    list(APPEND PLATFORM_LIBS PkgConfig::TSS2)
 else ()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif ()
@@ -69,9 +72,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${NODE_ADDON_API_DIR}" "${NAPI_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PRIVATE ${PLATFORM_LIBS})
 
-# CI test builds only (hosted runners have no TPM): the Windows software key provider through the same NCrypt calls.
-# Off by default, so a release binary always uses the TPM.
-option(DEVICE_KEY_SOFTWARE_PROVIDER "Test build: Windows software key storage provider instead of the TPM" OFF)
+# CI test builds only (hosted runners have no TPM): a software key store through the same calls, the software key
+# storage provider on Windows, swtpm on Linux. Off by default, so a release binary always uses the TPM.
+option(DEVICE_KEY_SOFTWARE_PROVIDER "Test build: a software key store (Windows software KSP, swtpm) instead of the TPM" OFF)
 if (DEVICE_KEY_SOFTWARE_PROVIDER)
     target_compile_definitions(${PROJECT_NAME} PRIVATE DEVICE_KEY_SOFTWARE_PROVIDER)
 endif ()
