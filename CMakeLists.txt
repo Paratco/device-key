@@ -69,6 +69,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${NODE_ADDON_API_DIR}" "${NAPI_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PRIVATE ${PLATFORM_LIBS})
 
+# CI test builds only (hosted runners have no TPM): the Windows software key provider through the same NCrypt calls.
+# Off by default, so a release binary always uses the TPM.
+option(DEVICE_KEY_SOFTWARE_PROVIDER "Test build: Windows software key storage provider instead of the TPM" OFF)
+if (DEVICE_KEY_SOFTWARE_PROVIDER)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE DEVICE_KEY_SOFTWARE_PROVIDER)
+endif ()
+
 if (WIN32)
     target_link_options(${PROJECT_NAME} PRIVATE /DELAYLOAD:NODE.EXE)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX)
