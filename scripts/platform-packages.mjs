@@ -5,6 +5,7 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const TARGETS = {
   "win32-x64": { os: "win32", cpu: "x64" },
+  "win32-arm64": { os: "win32", cpu: "arm64" },
   "darwin-arm64": { os: "darwin", cpu: "arm64" },
   "darwin-x64": { os: "darwin", cpu: "x64" },
 
