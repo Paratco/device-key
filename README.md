@@ -7,6 +7,8 @@ and signatures, never the private key.
 FRS uses it to log devices in: an admin approves a (user, device) pair, the device signs each login challenge with
 its key, and the user's PIN is checked only after the signature (see Paratco/frs#534).
 
+> **License:** MIT.
+>
 > **Status:** skeleton. The API, the encoding and the build/release pipeline are in place; the three hardware
 > backends are not built yet and report the key store as unavailable.
 
@@ -73,11 +75,15 @@ a Linux machine with a TPM.
 
 ## Releasing
 
-Bump `version` in `package.json`, tag `v<version>` and push the tag. The release workflow builds all five targets,
+Nobody types a version. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org): on every
+push to `main`, semantic-release reads them since the last tag and decides whether a release is due and which version
+(`feat` → minor, `fix` / `perf` → patch, `!` or a `BREAKING CHANGE:` footer → major). `package.json` keeps a
+placeholder version. When a release is due, the release workflow builds all five targets,
 makes one package per platform (`scripts/platform-packages.mjs`, which also writes the main package's
 `optionalDependencies` at the exact version), attests the binaries and tarballs, publishes the platform packages and
 then the main one to GitHub Packages and to npmjs (`scripts/publish.sh`; a version already published is skipped, so a
-failed release can be re-run), and creates a GitHub release with the binaries, tarballs and checksums.
+failed release can be re-run), and only then tags and creates a GitHub release with the notes, binaries, tarballs and
+checksums, so a failed publish leaves no tag and the run can be repeated.
 
 npmjs is published through **trusted publishing**: npm checks the workflow's GitHub OIDC identity, no token is stored,
 and every version carries provenance. Each of the six packages has `Paratco/device-key`, `release.yml` as its trusted

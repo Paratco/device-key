@@ -1,8 +1,7 @@
 name: ci
 
+# Pull requests here; pushes to main build through release.yml, which calls this.
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_call:
 

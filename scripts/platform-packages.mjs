@@ -24,11 +24,13 @@ for (const [target, { os, cpu, libc }] of Object.entries(TARGETS)) {
 
   // Throws when a target's binary is missing, which fails the release rather than publishing without it.
   copyFileSync(`prebuilds/${target}/device_key.node`, `${dir}/device_key.node`);
+  copyFileSync("LICENSE", `${dir}/LICENSE`);
 
   writeFileSync(`${dir}/package.json`, `${JSON.stringify({
     name,
     version: main.version,
     description: `${main.name} binary for ${target}`,
+    license: main.license,
     main: "device_key.node",
     files: ["device_key.node"],
     os: [os],
