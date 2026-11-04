@@ -35,6 +35,10 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
+      # tpm2-tss to build the Linux backend against, swtpm to test it on.
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libtss2-dev swtpm
+
       - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake }}
 
       - run: cmake --build build --config Release
@@ -55,6 +59,17 @@ jobs:
           cmake --build build-software --config Release
           $env:DEVICE_KEY_TEST_BINARY = Join-Path $PWD "build-software/Release/device_key.node"
           bun test tests/backend.test.ts
+
+      # Same for Linux: the backend through the same ESAPI calls on swtpm (localhost:2321) instead of /dev/tpmrm0.
+      - if: runner.os == 'Linux'
+        name: Backend test (swtpm)
+        run: |
+          mkdir -p "$RUNNER_TEMP/swtpm"
+          swtpm socket --tpm2 --server type=tcp,port=2321 --ctrl type=tcp,port=2322 \
+            --tpmstate dir="$RUNNER_TEMP/swtpm" --flags not-need-init,startup-clear --daemon
+          cmake -S . -B build-software -DCMAKE_BUILD_TYPE=Release -DDEVICE_KEY_SOFTWARE_PROVIDER=ON
+          cmake --build build-software
+          DEVICE_KEY_TEST_BINARY="$PWD/build-software/device_key.node" bun test tests/backend.test.ts
 
       - name: Stage the binary
         shell: bash
