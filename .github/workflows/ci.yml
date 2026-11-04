@@ -45,6 +45,17 @@ jobs:
       - if: ${{ !matrix.cross }}
         run: bunx tsc
 
+      # Hosted runners have no TPM: the Windows backend is tested through the same NCrypt calls on the software key
+      # store, from a separate build directory, so the binary uploaded below is never the test build.
+      - if: runner.os == 'Windows'
+        name: Backend test (software key store)
+        shell: pwsh
+        run: |
+          cmake -S . -B build-software -DCMAKE_BUILD_TYPE=Release -DDEVICE_KEY_SOFTWARE_PROVIDER=ON
+          cmake --build build-software --config Release
+          $env:DEVICE_KEY_TEST_BINARY = Join-Path $PWD "build-software/Release/device_key.node"
+          bun test tests/backend.test.ts
+
       - name: Stage the binary
         shell: bash
         run: mkdir -p "prebuilds/${{ matrix.target }}" && cp "${{ matrix.binary }}" "prebuilds/${{ matrix.target }}/device_key.node"

@@ -9,8 +9,8 @@ its key, and the user's PIN is checked only after the signature (see Paratco/frs
 
 > **License:** MIT.
 >
-> **Status:** skeleton. The API, the encoding and the build/release pipeline are in place; the three hardware
-> backends are not built yet and report the key store as unavailable.
+> **Status:** the Windows backend is built (TPM 2.0 through CNG). The Linux and macOS backends are not built yet and
+> report the key store as unavailable.
 
 ## API
 
@@ -34,7 +34,7 @@ Signatures are DER on every platform, so a server verifies them with any standar
 
 | OS | Hardware | Backend | Requirements |
 |---|---|---|---|
-| Windows 11 | TPM 2.0 | CNG `NCrypt`, *Microsoft Platform Crypto Provider*, machine key | Windows 11 requires TPM 2.0; VMs need a virtual TPM |
+| Windows 11 | TPM 2.0 | CNG `NCrypt`, *Microsoft Platform Crypto Provider* | Windows 11 requires TPM 2.0; VMs need a virtual TPM. Keys belong to the Windows account that creates them, no admin rights needed |
 | Linux | TPM 2.0 | `tpm2-tss` ESAPI, key blob wrapped by the TPM | `libtss2-esys`; the process user in the `tss` group |
 | macOS | Secure Enclave | Security.framework | Apple silicon or a T2 chip; the host app must be code-signed with a keychain access group, so it works inside a signed app, not from a bare `node` |
 
