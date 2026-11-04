@@ -9,6 +9,7 @@
 
 #include <fcntl.h>
 #include <pwd.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <tss2/tss2_esys.h>
@@ -134,13 +135,41 @@ namespace device_key {
             if (const char *xdg = std::getenv("XDG_DATA_HOME"); xdg != nullptr && xdg[0] == '/') {
                 return std::filesystem::path(xdg) / "paratco-device-key";
             }
-            const char *home = std::getenv("HOME");
-            if (home == nullptr || home[0] != '/') {
-                const auto *pw = getpwuid(getuid());
-                if (pw == nullptr) throw std::runtime_error("device-key: no home directory for this user");
-                home = pw->pw_dir;
+            std::filesystem::path home;
+            if (const char *env = std::getenv("HOME"); env != nullptr && env[0] == '/') {
+                home = env;
+            } else {
+                // getpwuid_r, not getpwuid: key operations run on parallel worker threads.
+                passwd entry{};
+                passwd *found = nullptr;
+                std::vector<char> buffer(16384);
+                if (getpwuid_r(getuid(), &entry, buffer.data(), buffer.size(), &found) != 0 || found == nullptr
+                    || entry.pw_dir == nullptr || entry.pw_dir[0] != '/') {
+                    throw std::runtime_error("device-key: no home directory for this user");
+                }
+                home = entry.pw_dir;
             }
-            return std::filesystem::path(home) / ".local" / "share" / "paratco-device-key";
+            return home / ".local" / "share" / "paratco-device-key";
+        }
+
+        // fsync on a directory persists the names in it: a new or removed key file, a new subdirectory.
+        void SyncDir(const std::filesystem::path &dir) {
+            const int fd = open(dir.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+            const bool synced = fd >= 0 && fsync(fd) == 0;
+            const int error = errno;
+            if (fd >= 0) close(fd);
+            if (!synced) throw std::runtime_error(std::string("device-key: cannot sync the key folder: ") + std::strerror(error));
+        }
+
+        // Missing folders are made 0700 whatever the umask (as the XDG spec asks), each synced into its parent so a
+        // power cut cannot lose it together with the first key.
+        void MakeDirs(const std::filesystem::path &dir) {
+            if (std::filesystem::is_directory(dir)) return;
+            MakeDirs(dir.parent_path());
+            if (mkdir(dir.c_str(), 0700) != 0 && errno != EEXIST) {
+                throw std::runtime_error(std::string("device-key: cannot create the key folder: ") + std::strerror(errno));
+            }
+            SyncDir(dir.parent_path());
         }
 
         // Names are checked to be plain (addon.cpp), so they are safe as file names.
@@ -170,7 +199,7 @@ namespace device_key {
         // never both succeed and a crash never leaves a half-written key.
         void WriteBlob(const std::string &name, const std::vector<uint8_t> &bytes) {
             const auto dir = KeyDir();
-            std::filesystem::create_directories(dir);
+            MakeDirs(dir);
             std::filesystem::permissions(dir, std::filesystem::perms::owner_all);
 
             auto tmp = (dir / ".tmp-XXXXXX").string();
@@ -183,7 +212,11 @@ namespace device_key {
             const int linked = written ? link(tmp.c_str(), KeyFile(name).c_str()) : -1;
             const int error = errno;
             unlink(tmp.c_str());
-            if (linked == 0) return;
+            if (linked == 0) {
+                // The key file's name, not only its content, must survive a power cut.
+                SyncDir(dir);
+                return;
+            }
             if (written && error == EEXIST) throw std::runtime_error("device-key: a key named \"" + name + "\" already exists");
             throw std::runtime_error(std::string("device-key: cannot write a key file: ") + std::strerror(error));
         }
@@ -203,7 +236,12 @@ namespace device_key {
             TPMT_PUBLIC_PARMS parms{};
             parms.type = TPM2_ALG_ECC;
             parms.parameters.eccDetail = SigningParms();
-            return Esys_TestParms(tpm.Ctx(), ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, &parms) == TSS2_RC_SUCCESS;
+            if (Esys_TestParms(tpm.Ctx(), ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, &parms) != TSS2_RC_SUCCESS) {
+                return false;
+            }
+            // An owner password, or a disabled owner hierarchy, refuses the primary key every operation needs.
+            CreatePrimary(tpm);
+            return true;
         } catch (const std::exception &) {
             // No TPM, no /dev/tpmrm0 access (not in tss), or no libtss2 TCTI: no key store.
             return false;
@@ -294,8 +332,10 @@ namespace device_key {
     void DeleteKey(const std::string &name) {
         // Nothing persists in the TPM: without its wrapped blob the key can never be loaded again.
         std::error_code error;
-        std::filesystem::remove(KeyFile(name), error);
+        const bool removed = std::filesystem::remove(KeyFile(name), error);
         if (error) throw std::runtime_error("device-key: cannot delete \"" + name + "\": " + error.message());
+        // So a deleted key cannot come back after a power cut.
+        if (removed) SyncDir(KeyDir());
     }
 
 }
