@@ -22,9 +22,6 @@
     "type": "git",
     "url": "git+https://github.com/Paratco/device-key.git"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "scripts": {
     "configure": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release",
     "build": "bun run configure && cmake --build build --config Release",

@@ -76,4 +76,9 @@ a Linux machine with a TPM.
 Bump `version` in `package.json`, tag `v<version>` and push the tag. The release workflow builds all five targets,
 makes one package per platform (`scripts/platform-packages.mjs`, which also writes the main package's
 `optionalDependencies` at the exact version), attests the binaries and tarballs, publishes the platform packages and
-then the main one to GitHub Packages, and creates a GitHub release with the binaries, tarballs and checksums.
+then the main one to GitHub Packages and to npmjs (`scripts/publish.sh`; a version already published is skipped, so a
+failed release can be re-run), and creates a GitHub release with the binaries, tarballs and checksums.
+
+npmjs is published through **trusted publishing**: npm checks the workflow's GitHub OIDC identity, no token is stored,
+and every version carries provenance. Each of the six packages has `Paratco/device-key`, `release.yml` as its trusted
+publisher. The `NPM_TOKEN` secret exists only to create the packages on the very first release.

@@ -65,14 +65,28 @@ jobs:
             assets/*.node
             assets/*.tgz
 
-      # Platform packages first: the main package must never point at a version that is not there yet.
+      # Two registries: GitHub Packages, where FRS maps the @paratco scope, and npmjs, installable without a token and
+      # with provenance. setup-node points the scope at each in turn, so package.json names no registry.
       - name: Publish to GitHub Packages
-        run: |
-          version="$(node -p "require('./package.json').version")"
-          for dir in npm/*; do npm publish "assets/paratco-device-key-$(basename "$dir")-$version.tgz"; done
-          npm publish "assets/paratco-device-key-$version.tgz"
+        run: bash scripts/publish.sh
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          scope: "@paratco"
+
+      # Trusted publishing (OIDC, no token) needs npm 11.5.1 or later.
+      - run: npm install --global npm@^11.5.1
+
+      - name: Publish to npmjs
+        run: bash scripts/publish.sh --access public --provenance
+        env:
+          # Only for the first release, which creates the packages; once each has a trusted publisher this secret is
+          # deleted and npm authenticates through the workflow's OIDC identity.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: GitHub release
         run: gh release create "$GITHUB_REF_NAME" assets/* --title "$GITHUB_REF_NAME" --generate-notes
