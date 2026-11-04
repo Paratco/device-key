@@ -7,25 +7,34 @@ import { fileURLToPath } from "node:url";
 const root = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
-// A published package carries one prebuilt binary per platform; a local build leaves it under build/.
-const candidates = [
-  join(root, "prebuilds", `${process.platform}-${process.arch}`, "device_key.node"),
-  join(root, "build", "Release", "device_key.node"),
-  join(root, "build", "device_key.node")
-];
+// Installed: the binary comes from the platform's own package (an optional dependency, only the matching one is
+// installed). Developing here: from the local build.
+const PLATFORM_PACKAGE = `@paratco/device-key-${process.platform}-${process.arch}`;
+const LOCAL_BUILDS = [join(root, "build", "Release", "device_key.node"), join(root, "build", "device_key.node")];
 
 let binding;
 
-function native() {
-  if (binding === undefined) {
-    const path = candidates.find((candidate) => existsSync(candidate));
-
-    if (path === undefined) {
-      throw new Error(`device-key: no binary for ${process.platform}-${process.arch}`);
+function load() {
+  try {
+    return require(PLATFORM_PACKAGE);
+  } catch (error) {
+    // Only "that package is not installed" falls through: a binary that is there but fails to load must say why.
+    if (error?.code !== "MODULE_NOT_FOUND" || !String(error.message).includes(PLATFORM_PACKAGE)) {
+      throw error;
     }
-
-    binding = require(path);
   }
+
+  const local = LOCAL_BUILDS.find((path) => existsSync(path));
+
+  if (local === undefined) {
+    throw new Error(`device-key: no binary for ${process.platform}-${process.arch} (${PLATFORM_PACKAGE} is not installed)`);
+  }
+
+  return require(local);
+}
+
+function native() {
+  binding ??= load();
 
   return binding;
 }

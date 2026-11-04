@@ -47,12 +47,16 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: "@paratco"
 
+      # One package per platform, and the main package's optionalDependencies pointed at them (exact version).
+      - name: Platform packages
+        run: node scripts/platform-packages.mjs
+
       - name: Pack, with release assets and checksums
         run: |
-          npm pack
           mkdir assets
+          for dir in npm/*; do (cd "$dir" && npm pack --pack-destination ../../assets); done
+          npm pack --pack-destination assets
           for dir in prebuilds/*; do cp "$dir/device_key.node" "assets/device_key-$(basename "$dir").node"; done
-          cp ./*.tgz assets/
           (cd assets && sha256sum ./* > SHA256SUMS)
 
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -61,8 +65,12 @@ jobs:
             assets/*.node
             assets/*.tgz
 
+      # Platform packages first: the main package must never point at a version that is not there yet.
       - name: Publish to GitHub Packages
-        run: npm publish ./*.tgz
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          for dir in npm/*; do npm publish "assets/paratco-device-key-$(basename "$dir")-$version.tgz"; done
+          npm publish "assets/paratco-device-key-$version.tgz"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

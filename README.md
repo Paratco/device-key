@@ -36,8 +36,10 @@ Signatures are DER on every platform, so a server verifies them with any standar
 | Linux | TPM 2.0 | `tpm2-tss` ESAPI, key blob wrapped by the TPM | `libtss2-esys`; the process user in the `tss` group |
 | macOS | Secure Enclave | Security.framework | Apple silicon or a T2 chip; the host app must be code-signed with a keychain access group, so it works inside a signed app, not from a bare `node` |
 
-Prebuilt binaries: `win32-x64`, `darwin-arm64`, `darwin-x64`, `linux-x64`, `linux-arm64`. Node-API 10, so one binary
-loads in Node, Bun and Electron without rebuilding.
+Prebuilt binaries for `win32-x64`, `darwin-arm64`, `darwin-x64`, `linux-x64` (glibc) and `linux-arm64` (glibc), each
+in its own package (`@paratco/device-key-<platform>-<arch>`), an optional dependency of the main package. The package
+manager installs only the one for the machine, so an app ships only its own platform's binary. Node-API 10, so one
+binary loads in Node, Bun and Electron without rebuilding.
 
 ## Security model
 
@@ -72,4 +74,6 @@ a Linux machine with a TPM.
 ## Releasing
 
 Bump `version` in `package.json`, tag `v<version>` and push the tag. The release workflow builds all five targets,
-attests them, publishes the package to GitHub Packages and creates a GitHub release with the binaries and checksums.
+makes one package per platform (`scripts/platform-packages.mjs`, which also writes the main package's
+`optionalDependencies` at the exact version), attests the binaries and tarballs, publishes the platform packages and
+then the main one to GitHub Packages, and creates a GitHub release with the binaries, tarballs and checksums.
