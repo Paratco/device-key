@@ -24,6 +24,9 @@ namespace {
         void Execute() override {
             try {
                 bytes_ = job_();
+            } catch (const device_key::KeyError &e) {
+                code_ = e.Code();
+                SetError(e.what());
             } catch (const std::exception &e) {
                 SetError(e.what());
             }
@@ -38,9 +41,14 @@ namespace {
             }
         }
 
-        void OnError(const Napi::Error &error) override { deferred_.Reject(error.Value()); }
+        void OnError(const Napi::Error &error) override {
+            auto value = error.Value();
+            if (code_ != nullptr) value.Set("code", code_);
+            deferred_.Reject(value);
+        }
 
     private:
+        const char *code_ = nullptr;
         Job job_;
         Result result_;
         Napi::Promise::Deferred deferred_;

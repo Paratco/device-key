@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -11,6 +12,25 @@
 namespace device_key {
 
     using Digest = std::array<uint8_t, 32>;
+
+    // A failure callers act on: it reaches JS with a `code`, so they never match on the message.
+    class KeyError : public std::runtime_error {
+    public:
+        KeyError(const char *code, const std::string &message) : std::runtime_error(message), code_(code) {}
+
+        const char *Code() const { return code_; }
+
+        static KeyError NotFound(const std::string &name) {
+            return {"KEY_NOT_FOUND", "device-key: no key named \"" + name + "\""};
+        }
+
+        static KeyError Exists(const std::string &name) {
+            return {"KEY_EXISTS", "device-key: a key named \"" + name + "\" already exists"};
+        }
+
+    private:
+        const char *code_;
+    };
 
     // Whether this machine can hold a key at all (TPM present and usable, Secure Enclave present).
     bool Available();

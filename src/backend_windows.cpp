@@ -51,8 +51,8 @@ namespace device_key {
 
         void Check(const SECURITY_STATUS status, const char *call, const std::string &name) {
             if (status == ERROR_SUCCESS) return;
-            if (status == NTE_BAD_KEYSET) throw std::runtime_error("device-key: no key named \"" + name + "\"");
-            if (status == NTE_EXISTS) throw std::runtime_error("device-key: a key named \"" + name + "\" already exists");
+            if (status == NTE_BAD_KEYSET) throw KeyError::NotFound(name);
+            if (status == NTE_EXISTS) throw KeyError::Exists(name);
 
             char code[16];
             std::snprintf(code, sizeof(code), "0x%08lX", static_cast<unsigned long>(status));

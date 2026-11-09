@@ -83,7 +83,7 @@ export async function isAvailable() {
   return native().isAvailable();
 }
 
-/** Creates the named key in hardware. Fails if it already exists. */
+/** Creates the named key in hardware. Fails with code KEY_EXISTS if it already exists. */
 export async function createKey(name) {
   await native().createKey(name);
 }

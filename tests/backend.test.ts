@@ -62,12 +62,13 @@ describe.skipIf(!usable)("key store", () => {
     await api.createKey(name);
 
     try {
-      await expect(api.createKey(name)).rejects.toThrow("already exists");
+      await expect(api.createKey(name)).rejects.toMatchObject({ code: "KEY_EXISTS" });
     } finally {
       await api.deleteKey(name);
     }
 
-    await expect(api.sign(name, Buffer.from("x"))).rejects.toThrow("no key");
+    await expect(api.sign(name, Buffer.from("x"))).rejects.toMatchObject({ code: "KEY_NOT_FOUND" });
+    await expect(api.publicKey(name)).rejects.toMatchObject({ code: "KEY_NOT_FOUND" });
 
     // Deleting a key that is not there is not an error.
     await api.deleteKey(name);
