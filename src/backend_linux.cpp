@@ -182,7 +182,7 @@ namespace device_key {
 
         Blob ReadBlob(const std::string &name) {
             std::ifstream in(KeyFile(name), std::ios::binary);
-            if (!in) throw std::runtime_error("device-key: no key named \"" + name + "\"");
+            if (!in) throw KeyError::NotFound(name);
             const std::vector<uint8_t> bytes{std::istreambuf_iterator<char>(in), {}};
 
             Blob blob;
@@ -217,7 +217,7 @@ namespace device_key {
                 SyncDir(dir);
                 return;
             }
-            if (written && error == EEXIST) throw std::runtime_error("device-key: a key named \"" + name + "\" already exists");
+            if (written && error == EEXIST) throw KeyError::Exists(name);
             throw std::runtime_error(std::string("device-key: cannot write a key file: ") + std::strerror(error));
         }
 
@@ -250,7 +250,7 @@ namespace device_key {
 
     void CreateKey(const std::string &name) {
         if (std::filesystem::exists(KeyFile(name))) {
-            throw std::runtime_error("device-key: a key named \"" + name + "\" already exists");
+            throw KeyError::Exists(name);
         }
 
         Tpm tpm;

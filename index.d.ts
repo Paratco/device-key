@@ -8,13 +8,19 @@
 /** Whether this machine can hold a device key (TPM 2.0 or Secure Enclave present and usable). */
 export function isAvailable(): Promise<boolean>;
 
-/** Creates the named key in hardware. Rejects if it already exists. */
+/**
+ * The `code` of a rejection callers act on: no key of that name (`publicKey`, `sign`), or one exists already
+ * (`createKey`). Any other failure has no code.
+ */
+export type KeyErrorCode = "KEY_NOT_FOUND" | "KEY_EXISTS";
+
+/** Creates the named key in hardware. Rejects with code `KEY_EXISTS` if it already exists. */
 export function createKey(name: string): Promise<void>;
 
-/** The named key's public key, as SPKI DER. */
+/** The named key's public key, as SPKI DER. Rejects with code `KEY_NOT_FOUND` if there is no such key. */
 export function publicKey(name: string): Promise<Buffer>;
 
-/** Signs `data` with the named key: ECDSA P-256 over SHA-256, DER encoded. */
+/** Signs `data` with the named key: ECDSA P-256 over SHA-256, DER encoded. Rejects with code `KEY_NOT_FOUND` if there is no such key. */
 export function sign(name: string, data: Uint8Array): Promise<Buffer>;
 
 /** Deletes the named key. Not an error when it does not exist. */

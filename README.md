@@ -18,7 +18,7 @@ its key, and the user's PIN is checked only after the signature (see Paratco/frs
 import { isAvailable, createKey, publicKey, sign, deleteKey } from "@paratco/device-key";
 
 if (await isAvailable()) {
-  await createKey("frs-device");                 // rejects if it already exists
+  await createKey("frs-device");                 // rejects with code "KEY_EXISTS" if it already exists
   const spki = await publicKey("frs-device");    // SPKI DER, for the server
   const signature = await sign("frs-device", challenge); // ECDSA P-256 over SHA-256, DER
 }
@@ -26,6 +26,8 @@ if (await isAvailable()) {
 
 Every call returns a promise and runs off the JS thread: hardware operations can take hundreds of milliseconds.
 Names are 1–64 characters of `A-Z a-z 0-9 . _ -`.
+A missing key rejects with `error.code === "KEY_NOT_FOUND"`, an existing one on `createKey` with `"KEY_EXISTS"`; check
+the code, not the message. Other failures (no TPM access, a hardware error) have no code.
 
 Signatures are DER on every platform, so a server verifies them with any standard library, e.g. Node's
 `crypto.verify("sha256", data, spki, signature)`.
