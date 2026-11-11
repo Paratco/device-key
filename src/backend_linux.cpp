@@ -182,7 +182,13 @@ namespace device_key {
 
         Blob ReadBlob(const std::string &name) {
             std::ifstream in(KeyFile(name), std::ios::binary);
-            if (!in) throw KeyError::NotFound(name);
+            // Only a missing file is a missing key: a key that exists but cannot be read (permissions, no free file
+            // descriptors, I/O) must not send the caller to create one. libstdc++ opens with open(), so errno holds why.
+            if (!in) {
+                const int error = errno;
+                if (error == ENOENT) throw KeyError::NotFound(name);
+                throw std::runtime_error("device-key: cannot read the key file for \"" + name + "\": " + std::strerror(error));
+            }
             const std::vector<uint8_t> bytes{std::istreambuf_iterator<char>(in), {}};
 
             Blob blob;

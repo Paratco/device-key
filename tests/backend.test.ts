@@ -1,5 +1,8 @@
 import { createHash, createPublicKey, randomUUID, verify } from "node:crypto";
+import { chmodSync } from "node:fs";
 import { createRequire } from "node:module";
+import { homedir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "bun:test";
 import * as deviceKey from "..";
 import { p1363ToDer, spkiFromPoint } from "..";
@@ -73,4 +76,28 @@ describe.skipIf(!usable)("key store", () => {
     // Deleting a key that is not there is not an error.
     await api.deleteKey(name);
   });
+
+  // Root reads any file, so the key could not be made unreadable.
+  it.skipIf(process.platform !== "linux" || process.getuid?.() === 0)(
+    "does not call a key it cannot read missing",
+    async () => {
+      const name = `test-${randomUUID()}`;
+
+      // Where KeyDir() puts it: $XDG_DATA_HOME only when absolute, else ~/.local/share.
+      const xdg = process.env.XDG_DATA_HOME;
+      const dataHome = xdg?.startsWith("/") === true ? xdg : path.join(homedir(), ".local/share");
+
+      await api.createKey(name);
+
+      try {
+        chmodSync(path.join(dataHome, "paratco-device-key", `${name}.tpm`), 0o000);
+
+        await expect(api.publicKey(name)).rejects.toThrow("Permission denied");
+        await expect(api.publicKey(name)).rejects.not.toHaveProperty("code");
+      } finally {
+        // Removing needs only the folder writable, so the unreadable file goes too.
+        await api.deleteKey(name);
+      }
+    }
+  );
 });
