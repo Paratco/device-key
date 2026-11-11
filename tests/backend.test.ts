@@ -82,16 +82,20 @@ describe.skipIf(!usable)("key store", () => {
     "does not call a key it cannot read missing",
     async () => {
       const name = `test-${randomUUID()}`;
-      const file = path.join(process.env.XDG_DATA_HOME ?? path.join(homedir(), ".local/share"), "paratco-device-key", `${name}.tpm`);
+
+      // Where KeyDir() puts it: $XDG_DATA_HOME only when absolute, else ~/.local/share.
+      const xdg = process.env.XDG_DATA_HOME;
+      const dataHome = xdg?.startsWith("/") === true ? xdg : path.join(homedir(), ".local/share");
 
       await api.createKey(name);
-      chmodSync(file, 0o000);
 
       try {
+        chmodSync(path.join(dataHome, "paratco-device-key", `${name}.tpm`), 0o000);
+
         await expect(api.publicKey(name)).rejects.toThrow("Permission denied");
         await expect(api.publicKey(name)).rejects.not.toHaveProperty("code");
       } finally {
-        chmodSync(file, 0o600);
+        // Removing needs only the folder writable, so the unreadable file goes too.
         await api.deleteKey(name);
       }
     }
